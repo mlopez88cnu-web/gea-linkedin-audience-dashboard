@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GEA LinkedIn Audience Analysis</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #1e293b; }
+    #app { max-width: 980px; margin: 0 auto; padding: 28px 20px; }
+
+    .header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+    .logo { width: 34px; height: 34px; background: #0077B5; border-radius: 7px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 15px; flex-shrink: 0; }
+    .header h1 { font-size: 18px; font-weight: 700; color: #0f172a; }
+    .header p { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+    .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 22px; }
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; }
+    .card-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .card-val { font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.2; }
+    .card-val.small { font-size: 14px; }
+    .card-sub { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+
+    .controls { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .tab-group, .metric-group { display: flex; gap: 4px; background: #e2e8f0; border-radius: 8px; padding: 4px; flex-wrap: wrap; }
+    .tab-btn, .metric-btn { padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; background: transparent; color: #64748b; transition: all 0.15s; }
+    .tab-btn.active { background: #fff; color: #0077B5; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .metric-btn.active { background: #0077B5; color: #fff; box-shadow: 0 1px 4px rgba(0,119,181,0.3); }
+
+    .note { font-size: 12px; color: #94a3b8; margin-bottom: 10px; }
+
+    .chart-wrap { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 16px 12px; overflow-x: auto; }
+
+    .table-wrap { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; margin-top: 16px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+    th { padding: 10px 14px; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+    th.left { text-align: left; }
+    th.right { text-align: right; }
+    tbody tr { border-bottom: 1px solid #f1f5f9; }
+    tbody tr.top-row { background: #eff8ff; }
+    td { padding: 9px 14px; }
+    td.right { text-align: right; }
+    td.num { text-align: right; color: #0077B5; font-weight: 600; }
+    .ctr-badge { border-radius: 4px; padding: 2px 7px; font-weight: 600; font-size: 12px; display: inline-block; }
+    .ctr-high { background: #dcfce7; color: #166534; }
+    .ctr-mid  { background: #fef9c3; color: #854d0e; }
+    .ctr-low  { background: #fee2e2; color: #991b1b; }
+    .bar-cell { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+    .bar-track { width: 60px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+    .bar-fill  { height: 100%; background: #0077B5; border-radius: 3px; }
+    .pct-label { color: #475569; min-width: 38px; text-align: right; }
+
+    .footer { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 14px; }
+
+    /* Tooltip */
+    #tooltip { position: fixed; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); font-size: 13px; pointer-events: none; display: none; z-index: 999; }
+    #tooltip .tt-name { font-weight: 600; color: #1e293b; margin-bottom: 4px; }
+    #tooltip .tt-val  { color: #0077B5; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<div id="tooltip"><div class="tt-name"></div><div class="tt-val"></div></div>
+
+<script>
+const DATA = {
+  jobFunction: {
+    label: "Job Function",
+    rows: [
+      { name:"Engineering", clicks:20160, ctr:1.08, impressions:1861744 },
+      { name:"Operations", clicks:19633, ctr:1.34, impressions:1460938 },
+      { name:"Administrative", clicks:6396, ctr:1.91, impressions:335235 },
+      { name:"Quality Assurance", clicks:3840, ctr:0.72, impressions:535254 },
+      { name:"Sales", clicks:3736, ctr:1.20, impressions:311594 },
+      { name:"IT", clicks:3396, ctr:1.38, impressions:246583 },
+      { name:"Media & Comms", clicks:3327, ctr:2.09, impressions:159352 },
+      { name:"Biz Dev", clicks:1416, ctr:1.16, impressions:121996 },
+      { name:"Arts & Design", clicks:1373, ctr:0.97, impressions:141287 },
+      { name:"Project Mgmt", clicks:1339, ctr:1.12, impressions:119445 },
+      { name:"Cust. Success", clicks:1255, ctr:1.09, impressions:115221 },
+      { name:"HR", clicks:896, ctr:1.23, impressions:72798 },
+      { name:"Marketing", clicks:336, ctr:0.84, impressions:39804 },
+    ]
+  },
+  seniority: {
+    label: "Seniority",
+    rows: [
+      { name:"Senior", clicks:26546, ctr:1.41, impressions:1889173 },
+      { name:"Entry", clicks:22096, ctr:1.21, impressions:1830388 },
+      { name:"Manager", clicks:7150, ctr:0.90, impressions:798175 },
+      { name:"Director", clicks:907, ctr:0.96, impressions:94523 },
+      { name:"Owner", clicks:554, ctr:1.37, impressions:40498 },
+      { name:"VP", clicks:533, ctr:1.02, impressions:52475 },
+      { name:"CXO", clicks:344, ctr:1.36, impressions:25323 },
+      { name:"Unpaid", clicks:151, ctr:3.40, impressions:4438 },
+      { name:"Partner", clicks:85, ctr:1.18, impressions:7232 },
+    ]
+  },
+  industry: {
+    label: "Industry",
+    rows: [
+      { name:"Transportation Equip. Mfg", clicks:17367, ctr:1.06, impressions:1635587 },
+      { name:"Machinery Mfg", clicks:10526, ctr:1.49, impressions:708612 },
+      { name:"Appliances/Electronics Mfg", clicks:10393, ctr:0.84, impressions:1234327 },
+      { name:"Computers & Electronics Mfg", clicks:7123, ctr:0.97, impressions:733894 },
+      { name:"Tech, Info & Internet", clicks:6548, ctr:1.20, impressions:544970 },
+      { name:"Manufacturing (General)", clicks:5896, ctr:2.94, impressions:200792 },
+      { name:"Engineering Services", clicks:5034, ctr:1.29, impressions:389221 },
+      { name:"Transportation & Logistics", clicks:3358, ctr:1.33, impressions:252699 },
+      { name:"IT Services & Consulting", clicks:3130, ctr:1.16, impressions:269284 },
+      { name:"Business Consulting", clicks:2756, ctr:1.38, impressions:199301 },
+      { name:"Chemical Mfg", clicks:2537, ctr:1.60, impressions:158426 },
+      { name:"Food & Beverage Mfg", clicks:2304, ctr:2.05, impressions:112303 },
+    ]
+  },
+  companySize: {
+    label: "Company Size",
+    rows: [
+      { name:"10,001+", clicks:13922, ctr:1.08, impressions:1292354 },
+      { name:"11-50", clicks:8398, ctr:1.52, impressions:551413 },
+      { name:"51-200", clicks:7826, ctr:1.16, impressions:675954 },
+      { name:"1,001-5,000", clicks:6587, ctr:1.06, impressions:621733 },
+      { name:"2-10", clicks:5237, ctr:1.75, impressions:299898 },
+      { name:"201-500", clicks:4999, ctr:1.11, impressions:448631 },
+      { name:"501-1,000", clicks:3356, ctr:1.04, impressions:322796 },
+      { name:"5,001-10,000", clicks:3007, ctr:1.02, impressions:293393 },
+      { name:"Self-Employed", clicks:449, ctr:0.98, impressions:45839 },
+    ]
+  },
+  jobTitle: {
+    label: "Job Title",
+    rows: [
+      { name:"Operations Manager", clicks:7694, ctr:1.76, impressions:436653 },
+      { name:"Office Manager", clicks:5856, ctr:2.09, impressions:280439 },
+      { name:"Design Engineer", clicks:4220, ctr:0.67, impressions:630365 },
+      { name:"Production Manager", clicks:2949, ctr:2.42, impressions:121705 },
+      { name:"Electrical Engineer", clicks:2262, ctr:1.71, impressions:132030 },
+      { name:"Manufacturing Engineer", clicks:1726, ctr:2.53, impressions:68273 },
+      { name:"System Engineer", clicks:1509, ctr:2.38, impressions:63386 },
+      { name:"Engineer", clicks:1509, ctr:1.63, impressions:92524 },
+      { name:"QA Manager", clicks:1484, ctr:0.66, impressions:226358 },
+      { name:"Parts Manager", clicks:1402, ctr:1.30, impressions:108013 },
+      { name:"Supply Chain Manager", clicks:1279, ctr:1.46, impressions:87866 },
+      { name:"Warehouse Manager", clicks:1221, ctr:1.18, impressions:103799 },
+      { name:"Engineering Technician", clicks:1069, ctr:2.92, impressions:36654 },
+      { name:"Senior Design Engineer", clicks:954, ctr:0.60, impressions:157872 },
+      { name:"Technician", clicks:775, ctr:3.01, impressions:25731 },
+      { name:"Software Engineer", clicks:756, ctr:1.22, impressions:61996 },
+      { name:"Senior Quality Engineer", clicks:742, ctr:0.59, impressions:125288 },
+      { name:"Logistics Manager", clicks:717, ctr:1.03, impressions:69736 },
+      { name:"Supply Chain Specialist", clicks:641, ctr:3.91, impressions:16376 },
+      { name:"Admin Assistance Specialist", clicks:624, ctr:5.49, impressions:11362 },
+      { name:"Admin Office Manager", clicks:621, ctr:5.44, impressions:11406 },
+      { name:"Mechanical Engineer", clicks:611, ctr:1.75, impressions:34884 },
+      { name:"Control Engineer", clicks:604, ctr:2.24, impressions:27012 },
+      { name:"Program Manager", clicks:514, ctr:1.31, impressions:39259 },
+      { name:"Engineering Manager", clicks:493, ctr:0.78, impressions:62870 },
+      { name:"Materials Manager", clicks:435, ctr:1.16, impressions:37554 },
+      { name:"Automation Engineer", clicks:420, ctr:1.63, impressions:25776 },
+      { name:"R&D Engineer", clicks:395, ctr:1.45, impressions:27207 },
+      { name:"Operational Specialist", clicks:335, ctr:1.14, impressions:29381 },
+      { name:"Mech. Engineering Specialist", clicks:329, ctr:3.44, impressions:9563 },
+    ]
+  }
+};
+
+const TABS = ['jobFunction','seniority','industry','companySize','jobTitle'];
+let activeTab = 'jobFunction';
+let activeMetric = 'clicks';
+
+const tt = document.getElementById('tooltip');
+
+function fmtNum(n) { return n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n); }
+function ctrClass(v) { return v >= 2.0 ? 'ctr-high' : v >= 1.0 ? 'ctr-mid' : 'ctr-low'; }
+
+function buildChart(rows, metric, isTitle) {
+  const chartRows = isTitle ? [...rows].sort((a,b)=>b[metric]-a[metric]).slice(0,20) : [...rows].sort((a,b)=>b[metric]-a[metric]);
+  const maxVal = Math.max(...chartRows.map(r => r[metric]));
+  const ROW_H = 28, LABEL_W = isTitle ? 200 : 175, PAD_R = 70, PAD_T = 10, PAD_B = 10;
+  const svgH = chartRows.length * ROW_H + PAD_T + PAD_B;
+  const color = metric === 'clicks' ? '#0077B5' : '#00A0DC';
+
+  // Build tick values
+  const ticks = [0, 0.25, 0.5, 0.75, 1.0].map(f => maxVal * f);
+  const CHART_W_PCT = `calc(100% - ${LABEL_W + PAD_R}px)`;
+
+  let svgRows = chartRows.map((row, i) => {
+    const barPct = (row[metric] / maxVal) * 100;
+    const y = PAD_T + i * ROW_H;
+    const valStr = metric === 'ctr' ? row[metric]+'%' : row[metric].toLocaleString();
+    return `
+      <g class="bar-row" data-name="${row.name}" data-clicks="${row.clicks}" data-ctr="${row.ctr}" data-metric="${metric}">
+        <rect x="0" y="${y+2}" width="100%" height="${ROW_H - 4}" fill="${i%2===0?'#f8fafc':'#fff'}" rx="0"/>
+        <text x="${LABEL_W - 8}" y="${y + ROW_H/2 + 4}" text-anchor="end" font-size="11.5" fill="#475569" font-family="-apple-system,sans-serif">${row.name}</text>
+        <rect class="bar" x="${LABEL_W}" y="${y+6}" width="0" height="${ROW_H-12}" fill="${color}" rx="3"
+          data-pct="${barPct}" style="transition:width 0.4s ease"/>
+        <text class="bar-label" x="${LABEL_W + 6}" y="${y + ROW_H/2 + 4}" font-size="11" fill="#64748b" font-family="-apple-system,sans-serif">${valStr}</text>
+      </g>`;
+  }).join('');
+
+  return `<svg id="main-chart" width="100%" height="${svgH}" style="display:block;overflow:visible">
+    ${svgRows}
+  </svg>`;
+}
+
+function render() {
+  const tab = DATA[activeTab];
+  const rows = tab.rows;
+  const isTitle = activeTab === 'jobTitle';
+  const total = rows.reduce((s,r) => s+r.clicks, 0);
+  const avgCTR = (rows.reduce((s,r) => s+r.ctr, 0) / rows.length).toFixed(2);
+  const sorted = [...rows].sort((a,b) => b[activeMetric]-a[activeMetric]);
+  const top = sorted[0];
+
+  const tableRows = [...rows].sort((a,b) => b.clicks-a.clicks).map((row, i) => {
+    const pct = ((row.clicks/total)*100).toFixed(1);
+    const maxClicks = rows.reduce((m,r)=>Math.max(m,r.clicks),0);
+    const barW = isTitle ? Math.min(100,(row.clicks/maxClicks)*100) : Math.min(100, parseFloat(pct)*(rows.length>5?3:1));
+    return `<tr class="${i===0?'top-row':''}">
+      <td style="color:#94a3b8;font-weight:500;padding:9px 14px">${i+1}</td>
+      <td style="padding:9px 14px;font-weight:${i===0?600:400}">${row.name}</td>
+      <td class="num">${row.clicks.toLocaleString()}</td>
+      <td class="right"><span class="ctr-badge ${ctrClass(row.ctr)}">${row.ctr}%</span></td>
+      <td class="right" style="color:#64748b">${row.impressions.toLocaleString()}</td>
+      <td class="right">
+        <div class="bar-cell">
+          <div class="bar-track"><div class="bar-fill" style="width:${barW}%"></div></div>
+          <span class="pct-label">${pct}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="header">
+      <div class="logo">in</div>
+      <div>
+        <h1>GEA LinkedIn Audience Analysis</h1>
+        <p>Global Electronics Association &middot; Last 90 days &middot; Clicks &amp; CTR</p>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-label">Total Clicks</div>
+        <div class="card-val">${total.toLocaleString()}</div>
+        <div class="card-sub">in ${tab.label} view</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Avg. CTR</div>
+        <div class="card-val">${avgCTR}%</div>
+        <div class="card-sub">across segments</div>
+      </div>
+      <div class="card">
+        <div class="card-label">${activeMetric==='clicks'?'Most Clicks':'Highest CTR'}</div>
+        <div class="card-val small">${top.name}</div>
+        <div class="card-sub">${top.clicks.toLocaleString()} clicks &middot; ${top.ctr}% CTR</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="tab-group">
+        ${TABS.map(id => `<button class="tab-btn${activeTab===id?' active':''}" data-tab="${id}">${DATA[id].label}</button>`).join('')}
+      </div>
+      <div class="metric-group">
+        <button class="metric-btn${activeMetric==='clicks'?' active':''}" data-metric="clicks">Clicks</button>
+        <button class="metric-btn${activeMetric==='ctr'?' active':''}" data-metric="ctr">CTR %</button>
+      </div>
+    </div>
+
+    ${isTitle ? '<p class="note">Chart shows top 20 titles &middot; Table shows top 30 by clicks (&ge;100 clicks threshold)</p>' : ''}
+
+    <div class="chart-wrap">${buildChart(rows, activeMetric, isTitle)}</div>
+
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th class="left">#</th>
+          <th class="left">${tab.label}</th>
+          <th class="right">Clicks</th>
+          <th class="right">CTR</th>
+          <th class="right">Impressions</th>
+          <th class="right">% of Total</th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>
+
+    <p class="footer">Source: LinkedIn Ads &middot; Global Electronics Association (514961889) &middot; Last 90 days</p>
+  `;
+
+  // Animate bars after render
+  requestAnimationFrame(() => {
+    const chartEl = document.getElementById('main-chart');
+    if (!chartEl) return;
+    const svgWidth = chartEl.getBoundingClientRect().width;
+    const isT = activeTab === 'jobTitle';
+    const LABEL_W = isT ? 200 : 175;
+    const PAD_R = 70;
+    const availW = svgWidth - LABEL_W - PAD_R;
+
+    chartEl.querySelectorAll('.bar-row').forEach(g => {
+      const bar = g.querySelector('.bar');
+      const label = g.querySelector('.bar-label');
+      if (!bar) return;
+      const pct = parseFloat(bar.getAttribute('data-pct'));
+      const w = (pct / 100) * availW;
+      bar.setAttribute('width', w);
+      bar.setAttribute('x', LABEL_W);
+      if (label) label.setAttribute('x', LABEL_W + w + 6);
+    });
+
+    // Tooltip events
+    chartEl.querySelectorAll('.bar-row').forEach(g => {
+      g.style.cursor = 'pointer';
+      g.addEventListener('mouseenter', (ev) => {
+        const metric = g.dataset.metric;
+        const val = metric === 'ctr' ? g.dataset.ctr+'%' : parseInt(g.dataset.clicks).toLocaleString();
+        const label = metric === 'ctr' ? 'CTR' : 'Clicks';
+        tt.querySelector('.tt-name').textContent = g.dataset.name;
+        tt.querySelector('.tt-val').textContent = label+': '+val;
+        tt.style.display = 'block';
+      });
+      g.addEventListener('mousemove', (ev) => {
+        tt.style.left = (ev.clientX + 14)+'px';
+        tt.style.top = (ev.clientY - 10)+'px';
+      });
+      g.addEventListener('mouseleave', () => { tt.style.display = 'none'; });
+    });
+  });
+
+  // Tab/metric button events
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => { activeTab = btn.dataset.tab; render(); });
+  });
+  document.querySelectorAll('.metric-btn').forEach(btn => {
+    btn.addEventListener('click', () => { activeMetric = btn.dataset.metric; render(); });
+  });
+}
+
+render();
+</script>
+</body>
+</html>
